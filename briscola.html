@@ -33,7 +33,7 @@ html {
     font-size: 2ex;
     visibility: hidden;
 }
-.last_card {
+.trump_card {
     height: 7em;
     width: 16em;
     margin: 2em;
@@ -208,6 +208,7 @@ function computeHand(c1, c2, trump_suit) {
 
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
+// Class to encapsulate the state of the game.
 class GameState {
     constructor() {
         // Deck is [1..40]
@@ -231,6 +232,62 @@ class GameState {
     }
 }
 
+// Class to easily draw the playing board.
+class Board {
+    constructor() {
+        this.cards_in_hand = document.querySelectorAll(".player_card");
+        // First card played in this hand
+        this.#cards_on_table[0] = document.querySelector("#fst");
+        // Second card played in this hand
+        this.#cards_on_table[1] = document.querySelector("#snd");
+        // Slot to display points count.
+        this.#points_counter[0] = document.querySelector("#points-p1");
+        this.#points_counter[1] = document.querySelector("#points-p2");
+        // Trump card (on table)
+        this.trump_card = document.querySelector(".trump_card");
+    }
+
+    #cards_on_table = [];
+    #points_counter = [];
+
+    // Returns the value of the last card played.
+    getLastPlayed() {
+        if (this.#cards_on_table.length === 0) {
+            alert("Incorrect game state!");
+        }
+        return this.#cards_on_table.at(0).textContent;
+    }
+
+    // Player can be 0 for the human and 1 for the computer.
+    // Turn can be 0 for the first to play the hand and 1
+    // for the second player of the hand.
+    play(player, turn, card) {
+        if (player === 0) {
+            this.#cards_on_table[turn].textContent = card.textContent;
+            this.#cards_on_table[turn].style.visibility = "visible";
+            card.style.visibility = "hidden";
+        } else {
+            this.#cards_on_table[turn].textContent = numberToCard(card);
+            this.#cards_on_table[turn].style.visibility = "visible";
+        }
+    }
+
+    // Removes the card from the table and updates
+    // the cards in the player's hand.
+    terminateHand(card, next_card) {
+        this.#cards_on_table[0].style.visibility = "hidden";
+        this.#cards_on_table[1].style.visibility = "hidden";
+        card.textContent = numberToCard(next_card);
+        card.style.visibility = "visible";
+    }
+
+    // Updates the points counter.
+    updatePoints(points) {
+        this.#points_counter[0].textContent = points.at(0);
+        this.#points_counter[1].textContent = points.at(1);
+    }
+}
+
 </script>
 
 </head>
@@ -247,7 +304,7 @@ class GameState {
 <div id=table>
 <button class=card_down id=fst></button>
 <button class=card_down id=snd></button>
-<button class=last_card></button>
+<button class=trump_card></button>
 </div>
 
 <div id=player_hand>
@@ -262,36 +319,25 @@ class GameState {
 
 <!-- Game logic starts here. -->
 <script>
-const player_cards = document.querySelectorAll(".player_card");
-// First card played in this hand
-const cd_fst = document.querySelector("#fst");
-// Second card played in this hand
-const cd_snd = document.querySelector("#snd");
-// Slot to display points count.
-const pts_p1 = document.querySelector("#points-p1");
-const pts_p2 = document.querySelector("#points-p2");
-
+const board = new Board;
 const state = new GameState;
 
 // Draw the initial hand.
 window.onload = (event) => {
     i = 0;
-    player_cards.forEach((card) => {
+    board.cards_in_hand.forEach((card) => {
         card.textContent = numberToCard(state.hands[0].at(i));
         ++i;
     })
     // Paint last card.
-    const last_card = document.querySelector(".last_card");
-    last_card.textContent = numberToCard(state.deck.at(0));
+    board.trump_card.textContent = numberToCard(state.deck.at(0));
 };
 
 // Takes as argument the card that was selected by the
 // player.
 async function playAsFirst(card) {
     const card_num = cardToNumber(card.textContent);
-    cd_fst.textContent = card.textContent;
-    cd_fst.style.visibility = "visible";
-    card.style.visibility = "hidden";
+    board.play(0, 0, card);
     let card2_num = -1;
     let idx2 = -1;
     // Player 1 did just play a card. Now it's
@@ -300,8 +346,7 @@ async function playAsFirst(card) {
     idx2 = Math.floor(Math.random() * 3);
     card2_num = state.hands.at(1).at(idx2);
     await sleep(500);
-    cd_snd.textContent = numberToCard(card2_num);
-    cd_snd.style.visibility = "visible";
+    board.play(1, 1, card2_num);
     // Compute who wins this hand.
     const [pts, winner] = computeHand(card_num, card2_num, state.trump_suit);
     // Update the points
@@ -314,15 +359,11 @@ async function playAsFirst(card) {
     const next_card = state.drawCard();
     const idx = state.hands.at(0).findIndex((c) => c === card_num);
     state.hands[0][idx] = next_card;
-    card.textContent = numberToCard(next_card);
     // Wait a little and redraw
     await sleep(1500);
-    cd_fst.style.visibility = "hidden";
-    cd_snd.style.visibility = "hidden";
-    card.style.visibility = "visible";
+    board.terminateHand(card, next_card);
     // Update points counter
-    pts_p1.textContent = state.points.at(0);
-    pts_p2.textContent = state.points.at(1);
+    board.updatePoints(state.points);
     // Update player 2's cards.
     state.hands[1][idx2] = state.drawCard();
     // If player 2 won, then it will play a random card
@@ -333,8 +374,9 @@ async function playAsFirst(card) {
         card2_num = state.hands.at(1).at(idx2);
         // Update visibility
         await sleep(500);
-        cd_fst.textContent = numberToCard(card2_num);
-        cd_fst.style.visibility = "visible";
+        //cd_fst.textContent = numberToCard(card2_num);
+        //cd_fst.style.visibility = "visible";
+        board.play(1, 0, card2_num);
         // Update player 2's cards.
         state.hands[1][idx2] = state.drawCard();
         // Return, waiting for player 1's card.
@@ -348,12 +390,10 @@ async function playAsFirst(card) {
 // player.
 async function playAsSecond(card) {
     const card_num = cardToNumber(card.textContent);
-    cd_snd.textContent = card.textContent;
-    cd_snd.style.visibility = "visible";
-    card.style.visibility = "hidden";
+    board.play(0, 1, card);
     await sleep(500);
     // Find what card was just played by player 2.
-    card2_num = cardToNumber(cd_fst.textContent);
+    card2_num = cardToNumber(board.getLastPlayed());
     // Compute who wins this hand.
     const [pts, winner] = computeHand(card2_num, card_num, state.trump_suit);
     // Update the points. Note that winner === 0 if player 2
@@ -367,15 +407,11 @@ async function playAsSecond(card) {
     const next_card = state.drawCard();
     const idx = state.hands.at(0).findIndex((c) => c === card_num);
     state.hands[0][idx] = next_card;
-    card.textContent = numberToCard(next_card);
     // Wait a little and redraw
     await sleep(1500);
-    cd_fst.style.visibility = "hidden";
-    cd_snd.style.visibility = "hidden";
-    card.style.visibility = "visible";
+    board.terminateHand(card, next_card);
     // Update points counter
-    pts_p1.textContent = state.points.at(0);
-    pts_p2.textContent = state.points.at(1);
+    board.updatePoints(state.points);
     // If player 2 won, then it will play a random card
     // and wait for player 1's click.
     if (winner === 0) {
@@ -384,10 +420,9 @@ async function playAsSecond(card) {
         card2_num = state.hands.at(1).at(idx2);
         // Update visibility
         await sleep(500);
-        cd_fst.textContent = numberToCard(card2_num);
-        cd_fst.style.visibility = "visible";
+        board.play(1, 0, card2_num);
         // Update player 2's cards.
-        state.hands[1][idx2] = state.drawCard();
+        //state.hands[1][idx2] = state.drawCard();
         // Return, waiting for player 1's card.
     }
     // Update game state.
@@ -395,7 +430,7 @@ async function playAsSecond(card) {
 }
 
 // Bind functions to card click events.
-player_cards.forEach((card) =>
+board.cards_in_hand.forEach((card) =>
     // Needs to be async to make the calls to sleep work.
     card.addEventListener("click", (event) => {
         if (state.won_last) {
