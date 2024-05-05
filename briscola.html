@@ -181,28 +181,28 @@ function numberToCard(n) {
 }
 
 // Computes the points assigned by the hand where the
-// first player plays c1 and the second player plays c2.
+// first player plays c0 and the second player plays c1.
 // Returns the number of points won by the winning player,
 // and the identity of the winning player (0 or 1).
-function computeHand(c1, c2, trump_suit) {
+function computeHand(c0, c1, trump_suit) {
+    const v0 = value(c0);
     const v1 = value(c1);
-    const v2 = value(c2);
+    const s0 = suit(c0);
     const s1 = suit(c1);
-    const s2 = suit(c2);
-    const pts = pvalue[v1] + pvalue[v2];
-    // wins is 0 if player 1 wins, 1 if player 2 wins.
+    const pts = pvalue[v0] + pvalue[v1];
+    // wins is 0 if player 0 wins, 1 if player 1 wins.
     let wins = 0;
-    if (s1 === trump_suit) {
-        if (s2 === trump_suit) {
-            wins = Number(svalue[v1] < svalue[v2]);
+    if (s0 === trump_suit) {
+        if (s1 === trump_suit) {
+            wins = Number(svalue[v0] < svalue[v1]);
         }
-        // else player 1 wins.
-    } else if (s2 === trump_suit) {
-        // Player 2 wins
+        // else player 0 wins.
+    } else if (s1 === trump_suit) {
+        // Player 1 wins
         wins = 1;
-    } else if (s1 === s2) {
-        wins = Number(svalue[v1] < svalue[v2]);
-    } // else player 1 wins.
+    } else if (s0 === s1) {
+        wins = Number(svalue[v0] < svalue[v1]);
+    } // else player 0 wins.
     return [pts, wins];
 }
 
@@ -219,18 +219,18 @@ class GameState {
         this.hands[0] = [this.deck.pop(), this.deck.pop(), this.deck.pop()];
         this.hands[1] = [this.deck.pop(), this.deck.pop(), this.deck.pop()];
         this.trump_suit = suit(this.deck.at(0));
-        // True if player 1 won last hand.
+        // True if player 0 won last hand.
         this.won_last = true;
         this.points = [0, 0];
     }
 
-    // Current cards in hand for players 1 and 2.
+    // Current cards in hand for players 0 and 1.
     hands = [[], []];
 
     // Compute who wins this hand and update the points counter.
     // Returns 0 or 1 depending on which player won the hand.
-    play(card, card2) {
-        const [pts, winner] = computeHand(card, card2, this.trump_suit);
+    play(card0, card1) {
+        const [pts, winner] = computeHand(card0, card1, this.trump_suit);
         // Update the points
         if (winner === 0) {
             this.points[0] += pts;
@@ -389,13 +389,13 @@ window.onload = (event) => {
 async function playAsFirst(card) {
     const card_num = cardToNumber(card.textContent);
     board.play(0, 0, card);
-    // Player 1 did just play a card. Now it's player 2's turn
+    // Player 0 did just play a card. Now it's player 1's turn
     // to play a card, which will be chosen randomly.
-    let card2_num = state.getRandomCard(1);
+    let card1_num = state.getRandomCard(1);
     await sleep(500);
-    board.play(1, 1, card2_num);
+    board.play(1, 1, card1_num);
     // Play the current hand
-    const winner = state.play(card_num, card2_num);
+    const winner = state.play(card_num, card1_num);
     // Draw the card at the top of the deck.
     const next_card = state.drawCard(0, card_num);
     // Wait a little and redraw
@@ -403,19 +403,18 @@ async function playAsFirst(card) {
     board.terminateHand(card, next_card, state.isEndGame());
     // Update points counter
     board.updatePoints(state.points);
-    // Update player 2's cards.
-    state.drawCard(1, card2_num);
-    // If player 2 won, then it will play a random card
-    // and wait for player 1's click.
+    // Update player 1's cards.
+    state.drawCard(1, card1_num);
+    // If player 1 won, then it will play a random card
+    // and wait for player 0's click.
     if (winner === 1) {
-        // Player 2 plays a card chosen at random.
-        card2_num = state.getRandomCard(1);
-        // Update visibility
+        // Player 1 plays a card chosen at random.
+        card1_num = state.getRandomCard(1);
         await sleep(500);
-        board.play(1, 0, card2_num);
-        // Update player 2's cards.
-        state.drawCard(1, card2_num);
-        // Return, waiting for player 1's card.
+        board.play(1, 0, card1_num);
+        // Update player 1's cards.
+        state.drawCard(1, card1_num);
+        // Return, waiting for player 0's card.
     }
     // Update game state.
     state.won_last = winner === 0;
@@ -428,10 +427,10 @@ async function playAsSecond(card) {
     const card_num = cardToNumber(card.textContent);
     board.play(0, 1, card);
     await sleep(500);
-    // Find what card was just played by player 2.
-    card2_num = cardToNumber(board.getLastPlayed());
+    // Find what card was just played by player 1.
+    card1_num = cardToNumber(board.getLastPlayed());
     // Play the current hand
-    const winner = state.play(card2_num, card_num);
+    const winner = state.play(card1_num, card_num);
     // Draw the card at the top of the deck and use it to
     // replace the card just played.
     const next_card = state.drawCard(0, card_num);
@@ -440,15 +439,14 @@ async function playAsSecond(card) {
     board.terminateHand(card, next_card, state.isEndGame());
     // Update points counter
     board.updatePoints(state.points);
-    // If player 2 won, then it will play a random card
-    // and wait for player 1's click.
+    // If player 1 won, then it will play a random card
+    // and wait for player 0's click.
     if (winner === 0) {
-        // Player 2 plays a card chosen at random.
-        card2_num = state.getRandomCard(1);
-        // Update visibility
+        // Player 1 plays a card chosen at random.
+        card1_num = state.getRandomCard(1);
         await sleep(500);
-        board.play(1, 0, card2_num);
-        // Return, waiting for player 1's card.
+        board.play(1, 0, card1_num);
+        // Return, waiting for player 0's card.
     }
     // Update game state.
     state.won_last = winner === 1;
