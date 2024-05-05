@@ -251,6 +251,13 @@ class GameState {
         return next_card;
     }
 
+    // Returns a card randomly picked among the hand of `player`.
+    getRandomCard(player) {
+        const n_cards = this.hands.at(player).length;
+        const idx = Math.floor(Math.random() * n_cards);
+        const card = this.hands.at(player).at(idx);
+        return card;
+    }
 }
 
 // Class to easily draw the playing board.
@@ -360,13 +367,9 @@ window.onload = (event) => {
 async function playAsFirst(card) {
     const card_num = cardToNumber(card.textContent);
     board.play(0, 0, card);
-    let card2_num = -1;
-    let idx2 = -1;
-    // Player 1 did just play a card. Now it's
-    // Player 2's turn to play a card, which will
-    // be chosen at random.
-    idx2 = Math.floor(Math.random() * 3);
-    card2_num = state.hands.at(1).at(idx2);
+    // Player 1 did just play a card. Now it's player 2's turn
+    // to play a card, which will be chosen randomly.
+    let card2_num = state.getRandomCard(1);
     await sleep(500);
     board.play(1, 1, card2_num);
     // Play the current hand
@@ -384,8 +387,7 @@ async function playAsFirst(card) {
     // and wait for player 1's click.
     if (winner === 1) {
         // Player 2 plays a card chosen at random.
-        idx2 = Math.floor(Math.random() * 3);
-        card2_num = state.hands.at(1).at(idx2);
+        card2_num = state.getRandomCard(1);
         // Update visibility
         await sleep(500);
         board.play(1, 0, card2_num);
@@ -420,8 +422,7 @@ async function playAsSecond(card) {
     // and wait for player 1's click.
     if (winner === 0) {
         // Player 2 plays a card chosen at random.
-        idx2 = Math.floor(Math.random() * 3);
-        card2_num = state.hands.at(1).at(idx2);
+        card2_num = state.getRandomCard(1);
         // Update visibility
         await sleep(500);
         board.play(1, 0, card2_num);
