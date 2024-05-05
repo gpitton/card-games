@@ -227,9 +227,30 @@ class GameState {
     // Current cards in hand for players 1 and 2.
     hands = [[], []];
 
-    drawCard() {
-        return this.deck.pop();
+    // Compute who wins this hand and update the points counter.
+    // Returns 0 or 1 depending on which player won the hand.
+    play(card, card2) {
+        const [pts, winner] = computeHand(card, card2, this.trump_suit);
+        // Update the points
+        if (winner === 0) {
+            this.points[0] += pts;
+        } else {
+            this.points[1] += pts;
+        }
+        return winner;
     }
+
+    // Draws a card from the deck for player 0 or 1, and updates
+    // the player's card `card` with the card drawn from deck.
+    // Returns the card just drawn.
+    drawCard(player, card) {
+        // TODO add support for end-game states with empty deck.
+        const next_card = this.deck.pop();
+        const idx = state.hands.at(player).findIndex((c) => c === card);
+        this.hands[player][idx] = next_card;
+        return next_card;
+    }
+
 }
 
 // Class to easily draw the playing board.
@@ -286,6 +307,7 @@ class Board {
         this.#points_counter[0].textContent = points.at(0);
         this.#points_counter[1].textContent = points.at(1);
     }
+
 }
 
 </script>
@@ -347,25 +369,17 @@ async function playAsFirst(card) {
     card2_num = state.hands.at(1).at(idx2);
     await sleep(500);
     board.play(1, 1, card2_num);
-    // Compute who wins this hand.
-    const [pts, winner] = computeHand(card_num, card2_num, state.trump_suit);
-    // Update the points
-    if (winner === 0) {
-        state.points[0] += pts;
-    } else {
-        state.points[1] += pts;
-    }
+    // Play the current hand
+    const winner = state.play(card_num, card2_num);
     // Draw the card at the top of the deck.
-    const next_card = state.drawCard();
-    const idx = state.hands.at(0).findIndex((c) => c === card_num);
-    state.hands[0][idx] = next_card;
+    const next_card = state.drawCard(0, card_num);
     // Wait a little and redraw
     await sleep(1500);
     board.terminateHand(card, next_card);
     // Update points counter
     board.updatePoints(state.points);
     // Update player 2's cards.
-    state.hands[1][idx2] = state.drawCard();
+    state.drawCard(1, card2_num);
     // If player 2 won, then it will play a random card
     // and wait for player 1's click.
     if (winner === 1) {
@@ -374,11 +388,9 @@ async function playAsFirst(card) {
         card2_num = state.hands.at(1).at(idx2);
         // Update visibility
         await sleep(500);
-        //cd_fst.textContent = numberToCard(card2_num);
-        //cd_fst.style.visibility = "visible";
         board.play(1, 0, card2_num);
         // Update player 2's cards.
-        state.hands[1][idx2] = state.drawCard();
+        state.drawCard(1, card2_num);
         // Return, waiting for player 1's card.
     }
     // Update game state.
@@ -394,19 +406,11 @@ async function playAsSecond(card) {
     await sleep(500);
     // Find what card was just played by player 2.
     card2_num = cardToNumber(board.getLastPlayed());
-    // Compute who wins this hand.
-    const [pts, winner] = computeHand(card2_num, card_num, state.trump_suit);
-    // Update the points. Note that winner === 0 if player 2
-    // won the hand, and winner === 1 if player 1 won.
-    if (winner === 1) {
-        state.points[0] += pts;
-    } else {
-        state.points[1] += pts;
-    }
-    // Draw the card at the top of the deck.
-    const next_card = state.drawCard();
-    const idx = state.hands.at(0).findIndex((c) => c === card_num);
-    state.hands[0][idx] = next_card;
+    // Play the current hand
+    const winner = state.play(card2_num, card_num);
+    // Draw the card at the top of the deck and use it to
+    // replace the card just played.
+    const next_card = state.drawCard(0, card_num);
     // Wait a little and redraw
     await sleep(1500);
     board.terminateHand(card, next_card);
@@ -421,8 +425,6 @@ async function playAsSecond(card) {
         // Update visibility
         await sleep(500);
         board.play(1, 0, card2_num);
-        // Update player 2's cards.
-        //state.hands[1][idx2] = state.drawCard();
         // Return, waiting for player 1's card.
     }
     // Update game state.
@@ -433,10 +435,15 @@ async function playAsSecond(card) {
 board.cards_in_hand.forEach((card) =>
     // Needs to be async to make the calls to sleep work.
     card.addEventListener("click", (event) => {
-        if (state.won_last) {
-            playAsFirst(card);
+        if (state.hands[0].length === 0 && state.hands[1] === 0)
+        {
+            alert("Game is over.");
         } else {
-            playAsSecond(card);
+            if (state.won_last) {
+                playAsFirst(card);
+            } else {
+                playAsSecond(card);
+            }
         }
     })
 );
