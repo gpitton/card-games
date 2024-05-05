@@ -244,19 +244,30 @@ class GameState {
     // the player's card `card` with the card drawn from deck.
     // Returns the card just drawn.
     drawCard(player, card) {
-        // TODO add support for end-game states with empty deck.
+        if (this.deck.length === 0) {
+            // We are in the final stage of the game.
+            return undefined;
+        }
         const next_card = this.deck.pop();
         const idx = state.hands.at(player).findIndex((c) => c === card);
         this.hands[player][idx] = next_card;
         return next_card;
     }
 
-    // Returns a card randomly picked among the hand of `player`.
+    // Returns a card randomly picked among the hand of `player`,
+    // and remove it from `player`'s hand.
     getRandomCard(player) {
         const n_cards = this.hands.at(player).length;
         const idx = Math.floor(Math.random() * n_cards);
         const card = this.hands.at(player).at(idx);
+        this.hands[player].splice(idx, 1);
         return card;
+    }
+
+    // Return true if we are in the final stage of the game
+    // (no more draws from the deck).
+    isEndGame() {
+        return this.deck.length === 0;
     }
 }
 
@@ -277,6 +288,7 @@ class Board {
 
     #cards_on_table = [];
     #points_counter = [];
+    trump_card;
 
     // Returns the value of the last card played.
     getLastPlayed() {
@@ -302,11 +314,21 @@ class Board {
 
     // Removes the card from the table and updates
     // the cards in the player's hand.
-    terminateHand(card, next_card) {
+    terminateHand(card, next_card, in_endgame) {
         this.#cards_on_table[0].style.visibility = "hidden";
         this.#cards_on_table[1].style.visibility = "hidden";
-        card.textContent = numberToCard(next_card);
-        card.style.visibility = "visible";
+        if (next_card) {
+            card.textContent = numberToCard(next_card);
+            card.style.visibility = "visible";
+        } else {
+            // Do not update the cards in hand - it means we are
+            // in the final stage of the game.
+        }
+
+        if (in_endgame) {
+            // Hide the trump card from the board.
+            this.trump_card.style.visibility = "hidden";
+        }
     }
 
     // Updates the points counter.
@@ -378,7 +400,7 @@ async function playAsFirst(card) {
     const next_card = state.drawCard(0, card_num);
     // Wait a little and redraw
     await sleep(1500);
-    board.terminateHand(card, next_card);
+    board.terminateHand(card, next_card, state.isEndGame());
     // Update points counter
     board.updatePoints(state.points);
     // Update player 2's cards.
@@ -415,7 +437,7 @@ async function playAsSecond(card) {
     const next_card = state.drawCard(0, card_num);
     // Wait a little and redraw
     await sleep(1500);
-    board.terminateHand(card, next_card);
+    board.terminateHand(card, next_card, state.isEndGame());
     // Update points counter
     board.updatePoints(state.points);
     // If player 2 won, then it will play a random card
