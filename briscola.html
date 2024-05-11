@@ -8,7 +8,7 @@ html {
     max-width: 600px;
     background-color: honeydew;
 }
-#opponent_hand, #player_hand, #table {
+#opponent-hand, #player-hand, #table {
     display: flex;
     align-items: center;
 }
@@ -16,7 +16,7 @@ html {
     height: 20em;
     justify-content: center;
 }
-.opponent_card {
+.opponent-card {
     height: 16em;
     width: 7em;
     margin: 2em;
@@ -24,7 +24,7 @@ html {
     background-color: aliceblue;
     font-size: 2ex;
 }
-.card_down {
+.card-down {
     height: 16em;
     width: 7em;
     margin: 1em;
@@ -33,7 +33,7 @@ html {
     font-size: 2ex;
     visibility: hidden;
 }
-.trump_card {
+.trump-card {
     height: 7em;
     width: 16em;
     margin: 2em;
@@ -41,7 +41,7 @@ html {
     background-color: linen;
     font-size: 2ex;
 }
-.player_card {
+.player-card {
     height: 16em;
     width: 7em;
     margin: 2em;
@@ -49,7 +49,7 @@ html {
     background-color: linen;
     font-size: 2ex;
 }
-.player_card:hover {
+.player-card:hover {
     background-color: salmon;
 }
 </style>
@@ -227,7 +227,7 @@ class GameState {
         this.first_to_play = 0;
 
         // Board properties
-        this.cards_in_hand = document.querySelectorAll(".player_card");
+        this.cards_in_hand = document.querySelectorAll(".player-card");
         // First card played in this hand
         this.#cards_on_table[0] = document.querySelector("#fst");
         // Second card played in this hand
@@ -236,7 +236,7 @@ class GameState {
         this.#points_counter[0] = document.querySelector("#points-p1");
         this.#points_counter[1] = document.querySelector("#points-p2");
         // Trump card (on table)
-        this.trump_card = document.querySelector(".trump_card");
+        this.trump_card = document.querySelector(".trump-card");
         // True if we are in the end game stage.
         this.in_endgame = false;
 
@@ -244,6 +244,8 @@ class GameState {
 
     // Current cards in hand for players 0 and 1.
     hands = [[], []];
+    // Cards played so far.
+    spent_cards = [];
 
     // Board state
     #cards_on_table = [];
@@ -268,6 +270,7 @@ class GameState {
             alert("drawCard: unexpected game state");
         }
         this.hands[0].splice(card_idx, 1);
+        this.spent_cards.push(cardToNumber(card.textContent));
         return card_num;
     }
 
@@ -319,6 +322,7 @@ class GameState {
         const tblidx = this.first_to_play ? 0 : 1;
         this.#cards_on_table[tblidx].textContent = numberToCard(card);
         this.#cards_on_table[tblidx].style.visibility = "visible";
+        this.spent_cards.push(card);
         return card;
     }
 
@@ -366,26 +370,30 @@ class GameState {
 <div id=playing_desk>
 
 <div id=opponent_hand>
-<button class=opponent_card></button>
-<button class=opponent_card></button>
-<button class=opponent_card></button>
+<button class=opponent-card></button>
+<button class=opponent-card></button>
+<button class=opponent-card></button>
 </div>
 
 <div id=table>
-<button class=card_down id=fst></button>
-<button class=card_down id=snd></button>
-<button class=trump_card></button>
+<button class=card-down id=fst></button>
+<button class=card-down id=snd></button>
+<button class=trump-card></button>
 </div>
 
 <div id=player_hand>
-<button class=player_card></button>
-<button class=player_card></button>
-<button class=player_card></button>
+<button class=player-card></button>
+<button class=player-card></button>
+<button class=player-card></button>
 </div>
 
 </div>
 
-<p id=points-count>Points: <span id=points-p1>0</span> <span id=points-p2>0</span></p>
+<p id=points-count>Points: <span id=points-p1>0</span> <span id=points-p2>0</span>
+<span>
+  <button id=analyse-game>Request analysis</button>
+</span>
+</p>
 
 <!-- Game logic starts here. -->
 <script>
@@ -475,6 +483,29 @@ game.cards_in_hand.forEach((card) =>
         }
     })
 );
+
+// Send an analysis request to the server.
+const button_req = document.getElementById('analyse-game');
+button_req.addEventListener('click', async _ => {
+    try {
+        const response = fetch('', {
+            method: 'post',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                points: game.points,
+                hand: game.hands[0],
+                first_to_play: game.first_to_play,
+                trump_card: cardToNumber(game.trump_card.textContent),
+                spent_cards: game.spent_cards
+            })
+        });
+        // TODO do something with the response.
+    } catch (err) {
+        console.error(`Error: ${err}`);
+    }
+});
 </script>
 
 </body>
