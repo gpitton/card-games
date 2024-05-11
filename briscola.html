@@ -208,72 +208,25 @@ function computeHand(c0, c1, trump_suit) {
 
 const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
-// Class to encapsulate the state of the game.
+// Class to encapsulate the state of the game. Includes the board
+// representation.
 class GameState {
     constructor() {
         // Deck is [1..40]
-        this.deck = Array(40).fill().map((_, i) => i + 1);
+        this.deck = Array(10).fill().map((_, i) => i + 1);
         shuffle(this.deck);
 
         // Initial draw.
         this.hands[0] = [this.deck.pop(), this.deck.pop(), this.deck.pop()];
         this.hands[1] = [this.deck.pop(), this.deck.pop(), this.deck.pop()];
         this.trump_suit = suit(this.deck.at(0));
-        // True if player 0 won last hand.
-        this.won_last = true;
         this.points = [0, 0];
-    }
+        // Which player has to play next
+        this.next_mover = 0;
+        // Which player plays first in the current hand.
+        this.first_to_play = 0;
 
-    // Current cards in hand for players 0 and 1.
-    hands = [[], []];
-
-    // Compute who wins this hand and update the points counter.
-    // Returns 0 or 1 depending on which player won the hand.
-    play(card0, card1) {
-        const [pts, winner] = computeHand(card0, card1, this.trump_suit);
-        // Update the points
-        if (winner === 0) {
-            this.points[0] += pts;
-        } else {
-            this.points[1] += pts;
-        }
-        return winner;
-    }
-
-    // Draws a card from the deck for player 0 or 1, and updates
-    // the player's card `card` with the card drawn from deck.
-    // Returns the card just drawn.
-    drawCard(player, card) {
-        if (this.deck.length === 0) {
-            // We are in the final stage of the game.
-            return undefined;
-        }
-        const next_card = this.deck.pop();
-        const idx = state.hands.at(player).findIndex((c) => c === card);
-        this.hands[player][idx] = next_card;
-        return next_card;
-    }
-
-    // Returns a card randomly picked among the hand of `player`,
-    // and remove it from `player`'s hand.
-    getRandomCard(player) {
-        const n_cards = this.hands.at(player).length;
-        const idx = Math.floor(Math.random() * n_cards);
-        const card = this.hands.at(player).at(idx);
-        this.hands[player].splice(idx, 1);
-        return card;
-    }
-
-    // Return true if we are in the final stage of the game
-    // (no more draws from the deck).
-    isEndGame() {
-        return this.deck.length === 0;
-    }
-}
-
-// Class to easily draw the playing board.
-class Board {
-    constructor() {
+        // Board properties
         this.cards_in_hand = document.querySelectorAll(".player_card");
         // First card played in this hand
         this.#cards_on_table[0] = document.querySelector("#fst");
@@ -284,57 +237,121 @@ class Board {
         this.#points_counter[1] = document.querySelector("#points-p2");
         // Trump card (on table)
         this.trump_card = document.querySelector(".trump_card");
+        // True if we are in the end game stage.
+        this.in_endgame = false;
+
     }
 
+    // Current cards in hand for players 0 and 1.
+    hands = [[], []];
+
+    // Board state
     #cards_on_table = [];
     #points_counter = [];
     trump_card;
+    in_endgame;
+
+    // Updates the game state after the human player plays the given
+    // card.
+    playCard(card) {
+        // idx = 0 if the human player is first to play.
+        const idx = this.first_to_play;
+        this.#cards_on_table[idx].textContent = card.textContent;
+        this.#cards_on_table[idx].style.visibility = "visible";
+        card.style.visibility = "hidden";
+        this.next_mover = 1;  // TODO do we need this?
+        // Remove card from hand.
+        const card_num = cardToNumber(card.textContent);
+        console.log(`playCard: ${card.textContent} ${card_num}`);
+        const card_idx = this.hands.at(0).findIndex((c) => c === card_num);
+        if (card_idx < 0) {
+            alert("drawCard: unexpected game state");
+        }
+        this.hands[0].splice(card_idx, 1);
+        return card_num;
+    }
+
+    // Compute who wins this hand and update the points counter.
+    // Returns 0 or 1 depending on which player won the hand.
+    calculateHand(card0, card1) {
+        const [pts, winner] = computeHand(card0, card1, this.trump_suit);
+        // Update the points
+        if (winner === 0) {
+            this.points[0] += pts;
+            this.first_to_play = 0;
+        } else {
+            this.points[1] += pts;
+            this.first_to_play = 1;
+        }
+        return winner;
+    }
+
+    // Draws a card from the deck for player 0 or 1, and updates
+    // the player's card `card` with the card drawn from deck.
+    // Returns the card just drawn.
+    drawFromDeck() {
+        for (const player of Array(2).keys()) {
+            // If this.deck is empty, calling pop() will return undefined.
+            const next_card = this.deck.pop();
+
+            if (next_card) {
+                // Add the card just drawn from deck into the player's
+                // hand.
+                this.hands[player].push(next_card);
+            } else {
+                this.in_endgame = true;
+            }
+        }
+    }
+
+    // Plays a card randomly picked among the hand of player 1,
+    // and remove it from player 1's hand.
+    playRandomCard() {
+        // TODO what if n_cards = 0?
+        const n_cards = this.hands.at(1).length;
+        const idx = Math.floor(Math.random() * n_cards);
+        const card = this.hands.at(1).at(idx);
+        this.hands[1].splice(idx, 1);  // Remove card from hand.
+        this.next_mover = 0;  // TODO do we need this?
+        // Note: first_to_play === 1 means computer player plays first.
+        const tblidx = this.first_to_play ? 0 : 1;
+        this.#cards_on_table[tblidx].textContent = numberToCard(card);
+        this.#cards_on_table[tblidx].style.visibility = "visible";
+        return card;
+    }
 
     // Returns the value of the last card played.
-    getLastPlayed() {
+    getLastPlayed(idx) {
         if (this.#cards_on_table.length === 0) {
             alert("Incorrect game state!");
         }
-        return this.#cards_on_table.at(0).textContent;
-    }
-
-    // Player can be 0 for the human and 1 for the computer.
-    // Turn can be 0 for the first to play the hand and 1
-    // for the second player of the hand.
-    play(player, turn, card) {
-        if (player === 0) {
-            this.#cards_on_table[turn].textContent = card.textContent;
-            this.#cards_on_table[turn].style.visibility = "visible";
-            card.style.visibility = "hidden";
-        } else {
-            this.#cards_on_table[turn].textContent = numberToCard(card);
-            this.#cards_on_table[turn].style.visibility = "visible";
+        if (!(idx === 0 || idx === 1)) {
+            alert("Incorrect game state!");
         }
+        return cardToNumber(this.#cards_on_table.at(idx).textContent);
     }
 
-    // Removes the card from the table and updates
+    // Removes the cards from the table and updates
     // the cards in the player's hand.
-    terminateHand(card, next_card, in_endgame) {
+    redrawBoard() {
         this.#cards_on_table[0].style.visibility = "hidden";
         this.#cards_on_table[1].style.visibility = "hidden";
-        if (next_card) {
-            card.textContent = numberToCard(next_card);
-            card.style.visibility = "visible";
-        } else {
-            // Do not update the cards in hand - it means we are
-            // in the final stage of the game.
-        }
-
-        if (in_endgame) {
+        if (this.in_endgame) {
             // Hide the trump card from the board.
             this.trump_card.style.visibility = "hidden";
+        } else {
+            this.cards_in_hand.forEach((card, i) => {
+                const card_value = this.hands.at(0).at(i);
+                card.textContent = numberToCard(card_value);
+                card.style.visibility = "visible";
+            });
         }
     }
 
     // Updates the points counter.
-    updatePoints(points) {
-        this.#points_counter[0].textContent = points.at(0);
-        this.#points_counter[1].textContent = points.at(1);
+    updatePointCounter() {
+        this.#points_counter[0].textContent = this.points.at(0);
+        this.#points_counter[1].textContent = this.points.at(1);
     }
 
 }
@@ -370,97 +387,85 @@ class Board {
 
 <!-- Game logic starts here. -->
 <script>
-const board = new Board;
-const state = new GameState;
+const game = new GameState;
 
 // Draw the initial hand.
 window.onload = (event) => {
-    i = 0;
-    board.cards_in_hand.forEach((card) => {
-        card.textContent = numberToCard(state.hands[0].at(i));
-        ++i;
+    game.cards_in_hand.forEach((card, i) => {
+        card.textContent = numberToCard(game.hands[0].at(i));
     })
     // Paint last card.
-    board.trump_card.textContent = numberToCard(state.deck.at(0));
+    game.trump_card.textContent = numberToCard(game.deck.at(0));
 };
 
 // Takes as argument the card that was selected by the
 // player.
 async function playAsFirst(card) {
-    const card_num = cardToNumber(card.textContent);
-    board.play(0, 0, card);
+    const card0 = game.playCard(card);
     // Player 0 did just play a card. Now it's player 1's turn
     // to play a card, which will be chosen randomly.
-    let card1_num = state.getRandomCard(1);
+    let card1 = game.playRandomCard();
+    // TODO disable clicking until sleep returns.
     await sleep(500);
-    board.play(1, 1, card1_num);
-    // Play the current hand
-    const winner = state.play(card_num, card1_num);
-    // Draw the card at the top of the deck.
-    const next_card = state.drawCard(0, card_num);
+    game.calculateHand(card0, card1);
+    // Draw the cards at the top of the deck for the two players.
+    game.drawFromDeck();
     // Wait a little and redraw
     await sleep(1500);
-    board.terminateHand(card, next_card, state.isEndGame());
+    // Update board state.
+    game.redrawBoard();
     // Update points counter
-    board.updatePoints(state.points);
-    // Update player 1's cards.
-    state.drawCard(1, card1_num);
+    game.updatePointCounter();
     // If player 1 won, then it will play a random card
     // and wait for player 0's click.
-    if (winner === 1) {
+    if (game.first_to_play === 1) {
         // Player 1 plays a card chosen at random.
-        card1_num = state.getRandomCard(1);
         await sleep(500);
-        board.play(1, 0, card1_num);
-        // Update player 1's cards.
-        state.drawCard(1, card1_num);
+        card1 = game.playRandomCard();
+        await sleep(500);
         // Return, waiting for player 0's card.
     }
-    // Update game state.
-    state.won_last = winner === 0;
 }
 
 
 // Takes as argument the card that was selected by the
 // player.
 async function playAsSecond(card) {
-    const card_num = cardToNumber(card.textContent);
-    board.play(0, 1, card);
+    const card0 = game.playCard(card);
     await sleep(500);
-    // Find what card was just played by player 1.
-    card1_num = cardToNumber(board.getLastPlayed());
+    // TODO Find what card was just played by player 1.
+    let card1 = game.getLastPlayed(0);
     // Play the current hand
-    const winner = state.play(card1_num, card_num);
-    // Draw the card at the top of the deck and use it to
-    // replace the card just played.
-    const next_card = state.drawCard(0, card_num);
+    game.calculateHand(card1, card0);
+    // Draw the card at the top of the deck for the two players.
+    game.drawFromDeck();
     // Wait a little and redraw
     await sleep(1500);
-    board.terminateHand(card, next_card, state.isEndGame());
+    // Update board state.
+    game.redrawBoard();
     // Update points counter
-    board.updatePoints(state.points);
+    game.updatePointCounter();
     // If player 1 won, then it will play a random card
     // and wait for player 0's click.
-    if (winner === 0) {
+    if (game.first_to_play === 1) {
         // Player 1 plays a card chosen at random.
-        card1_num = state.getRandomCard(1);
         await sleep(500);
-        board.play(1, 0, card1_num);
+        card1 = game.playRandomCard();
+        await sleep(500);
         // Return, waiting for player 0's card.
     }
-    // Update game state.
-    state.won_last = winner === 1;
 }
 
 // Bind functions to card click events.
-board.cards_in_hand.forEach((card) =>
+game.cards_in_hand.forEach((card) =>
     // Needs to be async to make the calls to sleep work.
     card.addEventListener("click", (event) => {
-        if (state.hands[0].length === 0 && state.hands[1] === 0)
+        if (game.hands[0].length === 0 && game.hands[1] === 0)
         {
             alert("Game is over.");
         } else {
-            if (state.won_last) {
+            console.log(game.hands[0].length, game.hands[1].length)
+            if (game.first_to_play === 0) {
                 playAsFirst(card);
             } else {
                 playAsSecond(card);
