@@ -277,11 +277,13 @@ class GameState {
         const [pts, winner] = computeHand(card0, card1, this.trump_suit);
         // Update the points
         if (winner === 0) {
-            this.points[0] += pts;
-            this.first_to_play = 0;
+            const idx = this.first_to_play === 0 ? 0 : 1;
+            this.points[idx] += pts;
+            this.first_to_play = idx;
         } else {
-            this.points[1] += pts;
-            this.first_to_play = 1;
+            const idx = this.first_to_play === 0 ? 1 : 0;
+            this.points[idx] += pts;
+            this.first_to_play = idx;
         }
         return winner;
     }
