@@ -412,10 +412,11 @@ window.onload = (event) => {
 // player.
 async function playAsFirst(card) {
     const card0 = game.playCard(card);
+    // TODO disable clicking until sleep returns.
+    await sleep(500);
     // Player 0 did just play a card. Now it's player 1's turn
     // to play a card, which will be chosen randomly.
     let card1 = game.playRandomCard();
-    // TODO disable clicking until sleep returns.
     await sleep(500);
     game.calculateHand(card0, card1);
     // Draw the cards at the top of the deck for the two players.
@@ -488,7 +489,7 @@ game.cards_in_hand.forEach((card) =>
 const button_req = document.getElementById('analyse-game');
 button_req.addEventListener('click', async _ => {
     try {
-        const response = fetch('', {
+        const response = await fetch('/', {
             method: 'post',
             headers: {
                 'Content-Type': 'application/json'
@@ -501,6 +502,7 @@ button_req.addEventListener('click', async _ => {
                 spent_cards: game.spent_cards
             })
         });
+        console.log(response);
         // TODO do something with the response.
     } catch (err) {
         console.error(`Error: ${err}`);

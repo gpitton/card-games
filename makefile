@@ -1,13 +1,20 @@
-CC=g++
+CXX=g++
 INCPATH=/opt/boost-1.83.0/
-CPPLANG=c++20
-CPPFLAGS=-Wall -Wextra -Weffc++ -Wpedantic
+CXXLANG=c++20
+CXXFLAGS=-Wall -Wextra -Weffc++ -Wpedantic -Wno-switch
 
-server-debug: server
-	$(CC) -Og $(CPPFLAGS) -std=$(CPPLANG) -isystem$(INCPATH) -o server server.cc
+.PHONY: all
+all: server-debug
+	$(info incpath: $(INCPATH))
 
-all:
-	server-debug
+.PHONY: server-debug
+server-debug:
+	$(CXX) -g -Og $(CXXFLAGS) -std=$(CXXLANG) -isystem$(INCPATH) -o server server.cc
 
+.PHONY: run-server
 run-server: server-debug
 	./server 127.0.0.1 8000 .
+
+.PHONY: clean
+clean:
+	rm -f server
