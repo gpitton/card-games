@@ -8,9 +8,11 @@ html {
     max-width: 600px;
     background-color: honeydew;
 }
-#opponent-hand, #player-hand, #table {
+#opponent-hand, #player-hand, #table,
+#analysis-results {
     display: flex;
     align-items: center;
+    justify-content: space-around;
 }
 #table {
     height: 20em;
@@ -367,9 +369,9 @@ class GameState {
 </head>
 <body>
 
-<div id=playing_desk>
+<div id=playing-desk>
 
-<div id=opponent_hand>
+<div id=opponent-hand>
 <button class=opponent-card></button>
 <button class=opponent-card></button>
 <button class=opponent-card></button>
@@ -381,10 +383,16 @@ class GameState {
 <button class=trump-card></button>
 </div>
 
-<div id=player_hand>
+<div id=player-hand>
 <button class=player-card></button>
 <button class=player-card></button>
 <button class=player-card></button>
+</div>
+
+<div id=analysis-results>
+<span id=p0></span>
+<span id=p1></span>
+<span id=p2></span>
 </div>
 
 </div>
@@ -485,6 +493,12 @@ game.cards_in_hand.forEach((card) =>
     })
 );
 
+// Placeholders for analysis results.
+// TODO can be replaced with querySelectorAll?
+const p0_disp = document.querySelector("#p0");
+const p1_disp = document.querySelector("#p1");
+const p2_disp = document.querySelector("#p2");
+
 // Send an analysis request to the server.
 const button_req = document.getElementById('analyse-game');
 button_req.addEventListener('click', async _ => {
@@ -502,7 +516,11 @@ button_req.addEventListener('click', async _ => {
                 spent_cards: game.spent_cards
             })
         });
-        console.log(response);
+        const jres = await response.json();
+        p0_disp.textContent = jres.ps.at(0);
+        p1_disp.textContent = jres.ps.at(1);
+        p2_disp.textContent = jres.ps.at(2);
+        console.log(ps);
         // TODO do something with the response.
     } catch (err) {
         console.error(`Error: ${err}`);
