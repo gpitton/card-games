@@ -215,7 +215,7 @@ const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 class GameState {
     constructor() {
         // Deck is [1..40]
-        this.deck = Array(10).fill().map((_, i) => i + 1);
+        this.deck = Array(40).fill().map((_, i) => i + 1);
         shuffle(this.deck);
 
         // Initial draw.
