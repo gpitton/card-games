@@ -2,7 +2,7 @@ CXX?=g++
 SYSINCPATH+=/opt/boost-1.83.0/
 WFLAGS=-Wall -Wextra -Weffc++ -Wpedantic -Wno-switch
 CXXLANG=c++20
-OPTFLAGS=-g -O0
+OPTFLAGS=-g -Og
 CXXFLAGS+=$(WFLAGS) $(OPTFLAGS) -std=$(CXXLANG) -isystem$(SYSINCPATH)
 
 .PHONY: run-server
@@ -12,6 +12,14 @@ run-server: server
 .PHONY: run-async
 run-async: server-async
 	./server-async 127.0.0.1 8080 . 1
+
+HEADERS:=$(shell find . -name "*.hh")
+
+server: server.cc $(HEADERS)
+	$(CXX) $(CXXFLAGS) $(^) -o $(@)
+
+server-async: server-async.cc $(HEADERS)
+	$(CXX) $(CXXFLAGS) $(^) -o $(@)
 
 .PHONY: compile-commands
 compile-commands:
