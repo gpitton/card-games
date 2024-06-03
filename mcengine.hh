@@ -287,6 +287,14 @@ void MonteCarloEngine::run(const GameState& game, double ps[3])
         // Just play whatever card you have in hand.
         return;
     }
+    if (game.points() > 60)
+    {
+        // Game already won.
+        ps[0] = 1.0;
+        ps[1] = 1.0;
+        ps[2] = 1.0;
+        return;
+    }
 
     // TODO offload to a pure function for parallel execution?
     std::vector<int> deck_cards = game.deckCards();

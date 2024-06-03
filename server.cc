@@ -15,7 +15,7 @@ constexpr const char* g_path = "briscola.html";
 void
 do_session(
     tcp::socket& socket,
-    std::shared_ptr<std::string const> const& doc_root)
+    const std::shared_ptr<const std::string>& doc_root)
 {
     beast::error_code ec;
 
@@ -79,9 +79,9 @@ int main(int argc, char* argv[])
                 "    server 0.0.0.0 8080 .\n";
             return EXIT_FAILURE;
         }
-        auto const address = net::ip::make_address(argv[1]);
-        auto const port = static_cast<unsigned short>(std::atoi(argv[2]));
-        auto const doc_root = std::make_shared<std::string>(argv[3]);
+        const auto address = net::ip::make_address(argv[1]);
+        const auto port = static_cast<unsigned short>(std::atoi(argv[2]));
+        const auto doc_root = std::make_shared<std::string>(argv[3]);
 
         // The io_context is required for all I/O
         net::io_context ioc{1};  // How many threads to run concurrently

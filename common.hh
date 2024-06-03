@@ -35,9 +35,9 @@ beast::string_view
 mime_type(beast::string_view path)
 {
     using beast::iequals;
-    auto const ext = [&path]
+    const auto ext = [&path]
     {
-        auto const pos = path.rfind(".");
+        const auto pos = path.rfind(".");
         if(pos == beast::string_view::npos)
         {
             return beast::string_view{};
@@ -81,7 +81,7 @@ path_cat(
     }
     std::string result(base);
 #ifdef BOOST_MSVC
-    char constexpr path_separator = '\\';
+    constexpr char path_separator = '\\';
     if(result.back() == path_separator)
     {
         result.resize(result.size() - 1);
@@ -95,9 +95,11 @@ path_cat(
         }
     }
 #else
-    char constexpr path_separator = '/';
+    constexpr char path_separator = '/';
     if(result.back() == path_separator)
+    {
         result.resize(result.size() - 1);
+    }
     result.append(path.data(), path.size());
 #endif
     return result;
@@ -115,7 +117,7 @@ handle_request(
     http::request<Body, http::basic_fields<Allocator>>&& req)
 {
     // Returns a bad request response
-    auto const bad_request =
+    const auto bad_request =
     [&req](beast::string_view why)
     {
         http::response<http::string_body> res{http::status::bad_request, req.version()};
@@ -128,7 +130,7 @@ handle_request(
     };
 
     // Returns a not found response
-    auto const not_found =
+    const auto not_found =
     [&req](beast::string_view target)
     {
         http::response<http::string_body> res{http::status::not_found, req.version()};
@@ -141,7 +143,7 @@ handle_request(
     };
 
     // Returns a server error response
-    auto const server_error =
+    const auto server_error =
     [&req](beast::string_view what)
     {
         http::response<http::string_body> res{http::status::internal_server_error, req.version()};
@@ -196,7 +198,7 @@ handle_request(
     }
 
     // Cache the size since we need it after the move
-    auto const size = body.size();
+    const std::uint64_t size = body.size();
 
     switch (req.method())
     {
@@ -228,14 +230,7 @@ handle_request(
         // Respond to POST request
         case http::verb::post:
         {
-            std::cout <<"BODY:\n" << req.body()<<"\n";
             GameState game = GameState::fromJson(req);
-            std::cout <<"DECK: ";
-            for(int v : game.deckCards())
-            {
-                std::cout << v <<" ";
-            }
-            std::cout<<"\n";
             MonteCarloEngine engine;
             double ps[3];
             engine.run(game, ps);
@@ -245,7 +240,6 @@ handle_request(
             */
             const std::string ps_str = "{\"ps\":[" + std::to_string(ps[0])
                 + ',' + std::to_string(ps[1]) + ',' + std::to_string(ps[2]) + "]}";
-            std::cout <<"RESPONSE: " << ps_str;
             http::response<http::string_body> res{
                 http::status::ok,
                 req.version(),
@@ -264,7 +258,7 @@ handle_request(
 
 // Report a failure
 void
-fail(beast::error_code ec, char const* what)
+fail(beast::error_code ec, const char * const what)
 {
     std::cerr << what << ": " << ec.message() << "\n";
 }
