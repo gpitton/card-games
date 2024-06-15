@@ -20,6 +20,9 @@ playing advice.
 
 Example:
 
+<!-- screenshot generated with kazam and edited with:
+ffmpeg -i screenshot0.mp4 -vf "fps=10,scale=500:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 screenshot0.gif
+-->
 ![Screenshot of a gaming session](assets/screenshot0.gif)
 
 ## Usage

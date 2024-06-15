@@ -2,7 +2,7 @@
 
 // Implementation of the Monte Carlo game search engine.
 // We need to include boost/json/src.hpp to import boost/json
-// as header-only library and avoid linking.
+// as header-only library.
 #include "boost/json/fwd.hpp"
 #include "boost/json/value_to.hpp"
 #include <bits/ranges_algo.h>
@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include <iostream>
 
 namespace http = boost::beast::http;
 
@@ -91,12 +90,12 @@ public:
 private:
     GameState(boost::json::value&& v)
         :
-        m_points{boost::json::value_to<std::array<int, 2>>(v.at(s_key_points))},
-        m_hand{boost::json::value_to<std::vector<int>>(v.at(s_key_hand))},
-        m_first_player(v.at(s_key_first_player).as_int64()),
-        m_trump_card(v.at(s_key_trump_card).as_int64())
+        m_points{boost::json::value_to<std::array<int, 2>>(v.at(key_points))},
+        m_hand{boost::json::value_to<std::vector<int>>(v.at(key_hand))},
+        m_first_player(v.at(key_first_player).as_int64()),
+        m_trump_card(v.at(key_trump_card).as_int64())
     {
-        for (const auto& i : v.at(s_key_spent_cards).as_array())
+        for (const auto& i : v.at(key_spent_cards).as_array())
         {
             // We need to subtract 1 because the javascript implementation
             // counts from 1.
@@ -105,11 +104,11 @@ private:
     }
 
     // Expected keys for the Json dictionary.
-    static constexpr std::string_view s_key_points {"points"};
-    static constexpr std::string_view s_key_hand {"hand"};
-    static constexpr std::string_view s_key_first_player {"first_to_play"};
-    static constexpr std::string_view s_key_trump_card {"trump_card"};
-    static constexpr std::string_view s_key_spent_cards {"spent_cards"};
+    static constexpr std::string_view key_points {"points"};
+    static constexpr std::string_view key_hand {"hand"};
+    static constexpr std::string_view key_first_player {"first_to_play"};
+    static constexpr std::string_view key_trump_card {"trump_card"};
+    static constexpr std::string_view key_spent_cards {"spent_cards"};
 
     std::array<int, 2> m_points;
     std::vector<int> m_hand;
@@ -119,13 +118,13 @@ private:
 };
 
 
+class Evaluator
+{
+public:
 // Returns the points obtained by player 0 if it plays the
 // sequence of cards `sequence0` when the game is in a state
 // given by `game` and the deck is in a state given by `deck`
 // and the opponent plays the cards of `sequence1`.
-class Evaluator
-{
-public:
     static int evaluatePlay(
         const GameState& game,
         const std::vector<int>& deck,
